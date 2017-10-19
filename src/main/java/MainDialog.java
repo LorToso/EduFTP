@@ -19,17 +19,35 @@ public class MainDialog extends JDialog {
     private JButton durchsuchenButton;
     private JTextField selectedFileField;
     private JProgressBar progressBar;
+    private JTextField titleField;
+    private JRadioButton unternehmensprofilRadioButton;
+    private JRadioButton käuferprofilRadioButton;
+    private JRadioButton führungskraftgesuchRadioButton;
+    private JRadioButton führungskraftangebotRadioButton;
+    private JRadioButton veröffentlichungRadioButton;
+    private JRadioButton veranstaltungRadioButton;
 
+    private ButtonGroup group = new ButtonGroup();
     private SimpleFTP ftp = new SimpleFTP();
     private File selectedFile;
+    private Type contentType = Type.UNTERNEHMENS_PROFIL;
 
     public MainDialog() {
+        setTitle("Datei hochladen");
         setResizable(false);
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonApply);
+        group.add(unternehmensprofilRadioButton);
+        group.add(käuferprofilRadioButton);
+        group.add(führungskraftgesuchRadioButton);
+        group.add(führungskraftangebotRadioButton);
+        group.add(veröffentlichungRadioButton);
+        group.add(veranstaltungRadioButton);
+        unternehmensprofilRadioButton.setSelected(true);
 
         progressBar.setStringPainted(true);
+        resetStatusField();
 
         buttonApply.addActionListener(e -> onApply());
 
@@ -46,6 +64,12 @@ public class MainDialog extends JDialog {
 
         // call onClose() on ESCAPE
         contentPane.registerKeyboardAction(e -> onClose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        unternehmensprofilRadioButton.addActionListener(() -> contentType = Type.UNTERNEHMENS_PROFIL);
+        käuferprofilRadioButton.addActionListener(() -> contentType = Type.KAEUFER_PROFIL);
+        führungskraftgesuchRadioButton.addActionListener(() -> contentType = Type.FUEHRUNSKRAFT_GESUCH);
+        führungskraftangebotRadioButton.addActionListener(() -> contentType = Type.FUEHRUNSKRAFT_ANGEBOT);
+        veröffentlichungRadioButton.addActionListener(() -> contentType = Type.VEROEFFENTLICHUNG);
+        veranstaltungRadioButton.addActionListener(() -> contentType = Type.VERANSTALTUNG);
     }
 
     private void onBrowse() {
@@ -69,8 +93,14 @@ public class MainDialog extends JDialog {
     }
 
     private void onApply() {
-        if(selectedFile == null)
+        if(selectedFile == null) {
+            JOptionPane.showMessageDialog(this, "Es wurde keine Datei ausgewählt", "Keine Datei", JOptionPane.ERROR_MESSAGE);
             return;
+        }
+        if(titleField.getText() == null || titleField.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Es wurde kein Titel angegeben", "Kein Titel.", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         CompletableFuture.runAsync(() -> {
             try {
                 startUpload();
@@ -79,7 +109,7 @@ public class MainDialog extends JDialog {
                 finishUpload(true);
             } catch (IOException e) {
                 finishUpload(false);
-                System.err.print(e);
+                e.printStackTrace();
             }
         });
     }
@@ -88,13 +118,12 @@ public class MainDialog extends JDialog {
         progressBar.setIndeterminate(false);
         if(successful){
             progressBar.setString("Erfolgreich!");
-            UIManager.put("ProgressBar.foreground", Color.GREEN);
-            UIManager.put("ProgressBar.selectionForeground", Color.GREEN);
+            //progressBar.setForeground(Color.GREEN);
+            //progressBar.setBackground(Color.BLACK);
         }
         else {
             progressBar.setString("Fehler!");
-            UIManager.put("ProgressBar.background", Color.ORANGE);
-            UIManager.put("ProgressBar.selectionBackground", Color.RED);
+            //progressBar.setForeground(Color.RED);
         }
         progressBar.setValue(100);
 
@@ -117,5 +146,14 @@ public class MainDialog extends JDialog {
         dialog.pack();
         dialog.setVisible(true);
         System.exit(0);
+    }
+
+    enum Type{
+        UNTERNEHMENS_PROFIL,
+        KAEUFER_PROFIL,
+        FUEHRUNSKRAFT_GESUCH,
+        FUEHRUNSKRAFT_ANGEBOT,
+        VEROEFFENTLICHUNG,
+        VERANSTALTUNG
     }
 }
