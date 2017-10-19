@@ -64,12 +64,13 @@ public class MainDialog extends JDialog {
 
         // call onClose() on ESCAPE
         contentPane.registerKeyboardAction(e -> onClose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        unternehmensprofilRadioButton.addActionListener(() -> contentType = Type.UNTERNEHMENS_PROFIL);
-        käuferprofilRadioButton.addActionListener(() -> contentType = Type.KAEUFER_PROFIL);
-        führungskraftgesuchRadioButton.addActionListener(() -> contentType = Type.FUEHRUNSKRAFT_GESUCH);
-        führungskraftangebotRadioButton.addActionListener(() -> contentType = Type.FUEHRUNSKRAFT_ANGEBOT);
-        veröffentlichungRadioButton.addActionListener(() -> contentType = Type.VEROEFFENTLICHUNG);
-        veranstaltungRadioButton.addActionListener(() -> contentType = Type.VERANSTALTUNG);
+
+        unternehmensprofilRadioButton.addActionListener((e) -> contentType = Type.UNTERNEHMENS_PROFIL);
+        käuferprofilRadioButton.addActionListener((e) -> contentType = Type.KAEUFER_PROFIL);
+        führungskraftgesuchRadioButton.addActionListener((e) -> contentType = Type.FUEHRUNSKRAFT_GESUCH);
+        führungskraftangebotRadioButton.addActionListener((e) -> contentType = Type.FUEHRUNSKRAFT_ANGEBOT);
+        veröffentlichungRadioButton.addActionListener((e) -> contentType = Type.VEROEFFENTLICHUNG);
+        veranstaltungRadioButton.addActionListener((e) -> contentType = Type.VERANSTALTUNG);
     }
 
     private void onBrowse() {
@@ -101,6 +102,7 @@ public class MainDialog extends JDialog {
             JOptionPane.showMessageDialog(this, "Es wurde kein Titel angegeben", "Kein Titel.", JOptionPane.ERROR_MESSAGE);
             return;
         }
+
         CompletableFuture.runAsync(() -> {
             try {
                 startUpload();
