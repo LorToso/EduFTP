@@ -2,6 +2,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 
 import java.io.*;
+import java.util.Arrays;
 
 public class SimpleFTP implements AutoCloseable{
     private FTPClient client;
@@ -42,7 +43,11 @@ public class SimpleFTP implements AutoCloseable{
     public void cd(String path) throws IOException {
         String[] split = path.split("/");
         for (String part : split) {
+            if(part.isEmpty())
+                continue;
             client.changeWorkingDirectory(part);
+            System.out.println(part );
+            System.out.println(Arrays.toString(client.listFiles()));
         }
     }
 

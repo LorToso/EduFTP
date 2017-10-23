@@ -5,17 +5,22 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MainDialog extends JDialog {
     public static String FTP_SERVER = "localhost";
     public static String USER = "test";
     public static String PASSWORD = "test";
 
+    private static final Logger LOGGER = Logger.getLogger(MainDialog.class.getName());
 
     private JPanel contentPane;
     private JButton buttonApply;
@@ -36,7 +41,8 @@ public class MainDialog extends JDialog {
     private File selectedFile;
     private Type contentType = Type.UNTERNEHMENS_PROFIL;
 
-    public MainDialog() {
+    public MainDialog() throws IOException {
+        LOGGER.addHandler(new FileHandler("Upload.log"));
         setTitle("Datei hochladen");
         setResizable(false);
         setContentPane(contentPane);
@@ -118,8 +124,15 @@ public class MainDialog extends JDialog {
         CompletableFuture.runAsync(this::startConnection)
         .thenAccept((n) -> checkIfFileAlreadyExists(normalizedFilename))
         .thenAccept((n) -> uploadFile(normalizedFilename))
-        .thenAccept((n) -> editHTML())
-        .thenAccept((n) -> finalizeUpload());
+        .thenAccept((n) -> editHTML(normalizedFilename))
+        .thenAccept((n) -> finalizeUpload())
+        .exceptionally(ex -> {
+            ex.printStackTrace();
+            finishUpload(false);
+            LOGGER.log(Level.SEVERE,ex, ex::toString);
+            return null;
+        })
+        .whenComplete((a,b) -> LOGGER.info("File " + normalizedFilename + " uploaded successfully"));
     }
 
     private void startConnection() {
@@ -128,12 +141,11 @@ public class MainDialog extends JDialog {
             ftp.connect(FTP_SERVER, USER, PASSWORD);
             ftp.cd("/new/web/uploads/pdf");
         } catch (IOException ex) {
-            finishUpload(false);
-            ex.printStackTrace();
+            throw new RuntimeException(ex);
         }
     }
 
-    private void editHTML() {
+    private void editHTML(String normalizedFileName) {
         try{
             ftp.cd_up();
             ftp.cd_up();
@@ -174,13 +186,12 @@ public class MainDialog extends JDialog {
 
             File file = ftp.downloadFile(typeFileName, tempFile1);
             List<String> lines = Files.readAllLines(file.toPath());
-            String newLine = "";
+            String newLine = "<li><a href=\"http://unu-nachfolge.de/uploads/pdf/" + normalizedFileName + "\" target=\"_blank\">" + titleField.getText() + "</a></li>";
             insertAfter(lines, typeOldLine, newLine);
             Files.write(tempFile2.toPath(), lines);
             ftp.store(tempFile2, typeFileName);
-        } catch (IOException e) {
-            finishUpload(false);
-            e.printStackTrace();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -189,7 +200,7 @@ public class MainDialog extends JDialog {
         for(int i = 0; i < lines.size(); i++){
             if(!lines.get(i).trim().equalsIgnoreCase(oldLine.trim()))
                 continue;
-            lines.add(i, newLine);
+            lines.add(i+1, newLine);
             return;
         }
     }
@@ -198,9 +209,8 @@ public class MainDialog extends JDialog {
         try {
             ftp.close();
             finishUpload(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            finishUpload(false);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -209,8 +219,7 @@ public class MainDialog extends JDialog {
             ftp.store(selectedFile, normalizedFilename);
             finishUpload(true);
         } catch (IOException e) {
-            finishUpload(false);
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -219,12 +228,11 @@ public class MainDialog extends JDialog {
             startUpload();
             if(ftp.fileExists(normalizedFilename)){
                 JOptionPane.showMessageDialog(this, "Normalisierter Dateiname " + normalizedFilename + " existiert bereits!", "Datei existiert bereits", JOptionPane.ERROR_MESSAGE);
-                return;
+                throw new IOException("Filename already exists.");
             }
 
         } catch (IOException e) {
-            finishUpload(false);
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -264,7 +272,7 @@ public class MainDialog extends JDialog {
         dispose();
     }
 
-    public static void main(String[] args) throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException, IllegalAccessException {
+    public static void main(String[] args) throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException, IllegalAccessException, IOException {
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         MainDialog dialog = new MainDialog();
         dialog.pack();
