@@ -1,9 +1,7 @@
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 
 public class SimpleFTP implements AutoCloseable{
     private FTPClient client;
@@ -25,15 +23,37 @@ public class SimpleFTP implements AutoCloseable{
         FileInputStream fileInputStream = new FileInputStream(file);
         client.storeFile(file.getName(), fileInputStream);
     }
+    public void store(File file, String newFileName) throws IOException {
+        FileInputStream fileInputStream = new FileInputStream(file);
+        client.storeFile(newFileName, fileInputStream);
+    }
 
     @Override
     public void close() throws Exception {
         if(client.isConnected()) {
-            try {
-                client.disconnect();
-            } catch (IOException ioe) {
-                // do nothing
-            }
+            client.disconnect();
         }
+    }
+
+    public boolean fileExists(String filename) throws IOException {
+        return client.listFiles(filename).length > 0;
+    }
+
+    public void cd(String path) throws IOException {
+        String[] split = path.split("/");
+        for (String part : split) {
+            client.changeWorkingDirectory(part);
+        }
+    }
+
+    public void cd_up() throws IOException {
+        client.changeToParentDirectory();
+    }
+
+    public File downloadFile(String filename, File resultFile) throws IOException {
+        FileOutputStream outputStream = new FileOutputStream(resultFile);
+        client.retrieveFile(filename, outputStream);
+        outputStream.close();
+        return resultFile;
     }
 }

@@ -1,10 +1,14 @@
-import com.sun.xml.internal.ws.util.CompletedFuture;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.text.Normalizer;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class MainDialog extends JDialog {
@@ -103,17 +107,135 @@ public class MainDialog extends JDialog {
             return;
         }
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                startUpload();
-                ftp.connect(FTP_SERVER, USER, PASSWORD);
-                ftp.store(selectedFile);
-                finishUpload(true);
-            } catch (IOException e) {
-                finishUpload(false);
-                e.printStackTrace();
+
+        String normalizedFilename =
+                Normalizer
+                        .normalize(selectedFile.getName(), Normalizer.Form.NFD)
+                        .replaceAll("[^\\p{ASCII}]", "")
+                        .replaceAll("\\s","");
+
+
+        CompletableFuture.runAsync(this::startConnection)
+        .thenAccept((n) -> checkIfFileAlreadyExists(normalizedFilename))
+        .thenAccept((n) -> uploadFile(normalizedFilename))
+        .thenAccept((n) -> editHTML())
+        .thenAccept((n) -> finalizeUpload());
+    }
+
+    private void startConnection() {
+        try {
+            startUpload();
+            ftp.connect(FTP_SERVER, USER, PASSWORD);
+            ftp.cd("/new/web/uploads/pdf");
+        } catch (IOException ex) {
+            finishUpload(false);
+            ex.printStackTrace();
+        }
+    }
+
+    private void editHTML() {
+        try{
+            ftp.cd_up();
+            ftp.cd_up();
+            File tempFile1 = generateTempFile();
+            File tempFile2 = generateTempFile();
+
+            String typeFileName;
+            String typeOldLine;
+
+            switch (contentType){
+                case UNTERNEHMENS_PROFIL:
+                    typeFileName = "verkaufsangebote-kaufsangebote.html";
+                    typeOldLine = "<ul class=\"Unternehmensprofile\">";
+                    break;
+                case KAEUFER_PROFIL:
+                    typeFileName = "verkaufsangebote-kaufsangebote.html";
+                    typeOldLine = "<ul class=\"Käuferprofile\">";
+                    break;
+                case FUEHRUNSKRAFT_GESUCH:
+                    typeFileName = "fuehrungskraefte-vermittlung.html";
+                    typeOldLine = "<ul class=\"Gesuche\">";
+                    break;
+                case FUEHRUNSKRAFT_ANGEBOT:
+                    typeFileName = "fuehrungskraefte-vermittlung.html";
+                    typeOldLine = "<ul class=\"Angebote\">";
+                    break;
+                case VEROEFFENTLICHUNG:
+                    typeFileName = "veroeffentlichungen.html";
+                    typeOldLine="<ul class=\"Veröffentlichungen\">";
+                    break;
+                case VERANSTALTUNG:
+                    typeFileName = "veranstaltungen.html";
+                    typeOldLine = "<ul class=\"Veranstaltungen\">";
+                    break;
+                default:
+                    throw new IOException("Invalid type!");
             }
-        });
+
+            File file = ftp.downloadFile(typeFileName, tempFile1);
+            List<String> lines = Files.readAllLines(file.toPath());
+            String newLine = "";
+            insertAfter(lines, typeOldLine, newLine);
+            Files.write(tempFile2.toPath(), lines);
+            ftp.store(tempFile2, typeFileName);
+        } catch (IOException e) {
+            finishUpload(false);
+            e.printStackTrace();
+        }
+    }
+
+    private void insertAfter(List<String> lines, String oldLine, String newLine) {
+
+        for(int i = 0; i < lines.size(); i++){
+            if(!lines.get(i).trim().equalsIgnoreCase(oldLine.trim()))
+                continue;
+            lines.add(i, newLine);
+            return;
+        }
+    }
+
+    private void finalizeUpload() {
+        try {
+            ftp.close();
+            finishUpload(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            finishUpload(false);
+        }
+    }
+
+    private void uploadFile(String normalizedFilename) {
+        try {
+            ftp.store(selectedFile, normalizedFilename);
+            finishUpload(true);
+        } catch (IOException e) {
+            finishUpload(false);
+            e.printStackTrace();
+        }
+    }
+
+    private void checkIfFileAlreadyExists(String normalizedFilename) {
+        try{
+            startUpload();
+            if(ftp.fileExists(normalizedFilename)){
+                JOptionPane.showMessageDialog(this, "Normalisierter Dateiname " + normalizedFilename + " existiert bereits!", "Datei existiert bereits", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+        } catch (IOException e) {
+            finishUpload(false);
+            e.printStackTrace();
+        }
+    }
+
+    @NotNull
+    private String  findTempDir() {
+        return System.getProperty("java.io.tmpdir");
+    }
+    @NotNull
+    private File generateTempFile() {
+        String tempDir = findTempDir();
+        return new File(tempDir + UUID.randomUUID());
     }
 
     private void finishUpload(boolean successful) {
