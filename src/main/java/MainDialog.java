@@ -16,9 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MainDialog extends JDialog {
-    public static String FTP_SERVER = "localhost";
-    public static String USER = "test";
-    public static String PASSWORD = "test";
+
 
     private static final Logger LOGGER = Logger.getLogger(MainDialog.class.getName());
 
@@ -138,7 +136,7 @@ public class MainDialog extends JDialog {
     private void startConnection() {
         try {
             startUpload();
-            ftp.connect(FTP_SERVER, USER, PASSWORD);
+            ftp.connect(Credentials.FTP_SERVER, Credentials.USER, Credentials.PASSWORD);
             ftp.cd("/new/web/uploads/pdf");
         } catch (IOException ex) {
             throw new RuntimeException(ex);
