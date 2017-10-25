@@ -1,4 +1,4 @@
-import org.jetbrains.annotations.NotNull;
+package de.lorenzotoso;
 
 import javax.swing.*;
 import java.awt.*;
@@ -234,11 +234,11 @@ public class MainDialog extends JDialog {
         }
     }
 
-    @NotNull
+
     private String  findTempDir() {
         return System.getProperty("java.io.tmpdir");
     }
-    @NotNull
+
     private File generateTempFile() {
         String tempDir = findTempDir();
         return new File(tempDir + UUID.randomUUID());
@@ -270,12 +270,16 @@ public class MainDialog extends JDialog {
         dispose();
     }
 
-    public static void main(String[] args) throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException, IllegalAccessException, IOException {
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        MainDialog dialog = new MainDialog();
-        dialog.pack();
-        dialog.setVisible(true);
-        System.exit(0);
+    public static void main(String[] args){
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            MainDialog dialog = new MainDialog();
+            dialog.pack();
+            dialog.setVisible(true);
+            System.exit(0);
+        } catch (Exception ex){
+            System.exit(1);
+        }
     }
 
     enum Type{
